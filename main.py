@@ -17,11 +17,26 @@ from datetime import datetime
 from fastapi import FastAPI, APIRouter
 
 
+# ---------- 初始化区域 ----------
+def get_logger():
+    log = logging.getLogger('ascarid')
+    handler = logging.FileHandler('app.log')
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    log.setLevel(logging.DEBUG)
+    log.addHandler(handler)
+    return log
+
+
+logger = get_logger()
+
 # ---------- 常量区域 ----------
 UOS = 'UOS'
 CENTOS = 'CentOS'
 CURRENT_OS = os.environ.get('TASK_OS', CENTOS)
-INTERVAL = os.environ.get('TASK_INTERVAL', 10)
+INTERVAL = int(os.environ.get('TASK_INTERVAL', 10))
+
+
 # ---------- 常量区域 ----------
 
 
@@ -39,8 +54,7 @@ class Tool(object):
         }
         volume_dir = os.environ.get("VOLUME_DIR")
         db_path = os.path.join(volume_dir, 'core', 'data', 'net_config')
-        # db_path = os.path.join(volume_dir, 'data', 'net_config')
-
+        db_path = os.path.join(volume_dir, 'data', 'net_config')
         while True:
             db = shelve.open(db_path)
             result = {}
@@ -72,22 +86,12 @@ class Tool(object):
         tasks, status = self._thread_pool, 'ok'
         task_message = ''
         for name, other in tasks.items():
-            task_message += f"任务[{name}]: 一共执行了{other['count']}次，上次执行时间是: {other['last_time']}; "
+            task_message += f"Task [{name}]: executed {other['count']} times，last time: {other['last_time']}; "
             diff = time.time() - other.get('timestamp', 0)
             if diff > INTERVAL * 3:
                 status = 'failed'
-        content = f"一共有{len(tasks)}个任务; {task_message}"
+        content = f"Task total count: {len(tasks)}; {task_message}"
         return content, status
-
-    @staticmethod
-    def get_logger():
-        log = logging.getLogger('ascarid')
-        handler = logging.FileHandler('app.log')
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
-        log.setLevel(logging.ERROR)
-        log.addHandler(handler)
-        return log
 
     @staticmethod
     def check_jms_core_status():
@@ -119,20 +123,25 @@ class Tool(object):
         gateway = kwargs.get('gateway')
         subnet_mask = kwargs.get('subnet_mask')
 
-        network_card = ''
         command = "ip route | grep default | awk -F '[ \t*]' '{{print $5}}'"
         logger.debug(f'Centos command: {command}')
         result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE)
 
         routers = set(result.stdout.decode().splitlines())
         if len(routers) < 1:
-            logger.warning('ip route 未查询到网卡名称')
+            logger.warning('Not find nic name')
+            return False
 
-        path = "/etc/sysconfig/network-scripts/ifcfg-" + network_card
+        path = "/etc/sysconfig/network-scripts/ifcfg-" + routers.pop()
+        if not os.path.exists(path):
+            logger.error(f'Not find path: {path}')
+            return False
+
+        logger.info(f'Network path: {path}')
         file_handler = open(path, "r")
         network_content = file_handler.read()
         file_handler.close()
-        conte = "IPADDR=%s\nGATEWAY=%s\nPREFIX=%s\n" % (ip, gateway, subnet_mask)
+        conte = "IPADDR=%s\nGATEWAY=%s\nNETMASK=%s\n" % (ip, gateway, subnet_mask)
         num = network_content.find("IPADDR")
         if num != -1:
             network_content = network_content[:num] + conte
@@ -145,6 +154,11 @@ class Tool(object):
         return result == 0
 
     def modify_network(self, os_type=CENTOS, **kwargs):
+        logger.info('Start run modify network.')
+        if not kwargs:
+            logger.info('Modify network not kwargs, the task ends.')
+            return
+
         failed = False
         # kwargs 目前传入的参数有ip, subnet_mask, gateway
         os_actions = {
@@ -156,7 +170,7 @@ class Tool(object):
             ],
             CENTOS: self.__modify_network_centos
         }
-        action = os_actions.get(str(os_type).lower())
+        action = os_actions.get(os_type)
         if not action:
             logger.warning(f'此操作系统({os_type})下未匹配到对应命令.')
             return
@@ -175,16 +189,15 @@ class Tool(object):
                     failed = True
                     logger.error(f'Command [{full_command}], executed failed: {err}')
         elif callable(action):
-            action(**kwargs)
+            failed = action(**kwargs)
         if not failed:
             self.restart_docker()
+
+
 # ---------- 工具类 ----------
-
-
 tool = Tool()
 app = FastAPI()
 api_router = APIRouter(prefix='/api')
-logger = tool.get_logger()
 
 
 # ---------- 路由 ----------
@@ -197,7 +210,7 @@ async def index():
 async def health():
     info, status = tool.get_tasks_info()
     return {'status': status, 'result': info}
+
+
 # ---------- 路由 ----------
-
-
 app.include_router(api_router)
