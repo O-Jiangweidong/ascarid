@@ -149,9 +149,9 @@ class Tool(object):
             file_handler.write(network_content)
             file_handler.close()
 
-        result = os.system('service network restart')
+        os.system('service network restart')
         logger.info('The network restart command is successfully delivered')
-        return result == 0
+        return True
 
     def modify_network(self, os_type=CENTOS, **kwargs):
         logger.info('Start run modify network.')
@@ -189,7 +189,7 @@ class Tool(object):
                     failed = True
                     logger.error(f'Command [{full_command}], executed failed: {err}')
         elif callable(action):
-            failed = action(**kwargs)
+            failed = not action(**kwargs)
         if not failed:
             self.restart_docker()
 
