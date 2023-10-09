@@ -14,7 +14,8 @@ import threading
 
 from datetime import datetime
 
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, status
+from fastapi.responses import JSONResponse
 
 
 # ---------- 初始化区域 ----------
@@ -218,9 +219,12 @@ async def index():
 
 
 @api_router.get('/health')
-async def health():
-    info, status = tool.get_tasks_info()
-    return {'status': status, 'result': info}
+async def health() -> JSONResponse:
+    info, resp = tool.get_tasks_info()
+    data = {'status': resp, 'result': info}
+    if resp != 'ok':
+        return JSONResponse(content=data, status_code=status.HTTP_400_BAD_REQUEST)
+    return JSONResponse(content=data, status_code=status.HTTP_200_OK)
 
 
 # ---------- 路由 ----------

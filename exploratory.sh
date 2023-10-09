@@ -15,5 +15,5 @@ else
       # 关闭进程
       kill $pid
     fi
-    nohup /Users/jiangweidong/resources/dazhong_v2.19/ascarid/run.sh > /dev/null 2>&1 &
+    nohup /opt/ascarid/run.sh > /dev/null 2>&1 &
 fi
