@@ -3,7 +3,6 @@
 # 发送 HTTP 请求并获取响应状态码
 response_code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8888/api/health)
 
-echo $response_code
 # 检查响应状态码是否为 200
 if [[ "$response_code" -eq 200 ]]; then
     echo "Response is 200. Skipping execution."
@@ -14,9 +13,7 @@ else
     if [[ -n $pid ]]; then
       echo "Found process with PID $pid on port 8888. Terminating..."
       # 关闭进程
-      kill -9 $pid
-    else
-      echo "No process found on port 8888."
+      kill $pid
     fi
-#    nohup ./run.sh > /dev/null 2>&1 &
+    nohup /Users/jiangweidong/resources/dazhong_v2.19/ascarid/run.sh > /dev/null 2>&1 &
 fi

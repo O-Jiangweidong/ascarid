@@ -10,4 +10,5 @@ export TASK_INTERVAL=10
 #export VOLUME_DIR=/Users/jiangweidong/resources/dazhong_v2.19/jumpserver
 # DEV
 #uvicorn main:app --reload
+cd /Users/jiangweidong/resources/dazhong_v2.19/ascarid/
 python -m uvicorn main:app --host 0.0.0.0 --port 8888
