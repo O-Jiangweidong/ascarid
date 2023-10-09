@@ -48,24 +48,35 @@ class Tool(object):
         self._init_task()
 
     def _period_check_net_config(self, task_name):
+        self._thread_pool[task_name]['count'] += 1
+        self._thread_pool[task_name]['last_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self._thread_pool[task_name]['timestamp'] = int(time.time())
+        logger.info('Start check')
         keys = {
             'ip': 'JUMPSERVER_IP', 'gateway': 'JUMPSERVER_GATEWAY',
             'subnet_mask': 'JUMPSERVER_SUBNET_MASK'
         }
         volume_dir = os.environ.get("VOLUME_DIR")
         db_path = os.path.join(volume_dir, 'core', 'data', 'net_config')
-        db_path = os.path.join(volume_dir, 'data', 'net_config')
         while True:
-            db = shelve.open(db_path)
+            try:
+                db = shelve.open(db_path)
+            except Exception as err:
+                logger.warning(f'DB file open failed: {err}')
+                time.sleep(INTERVAL)
+                continue
             result = {}
-            for k, v in keys.items():
-                if p := db.pop(v):
-                    result[k] = p
-            db.close()
-            self._thread_pool[task_name]['count'] += 1
-            self._thread_pool[task_name]['last_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            self._thread_pool[task_name]['timestamp'] = int(time.time())
-
+            logger.info(f'items: {",".join([f"{k}: {v}" for k, v in db.items()])}')
+            try:
+                for k, v in keys.items():
+                    if p := db.pop(v):
+                        result[k] = p
+                db.close()
+            except Exception as err:
+                logger.warning(f'DB file get params error: {err}')
+                time.sleep(INTERVAL)
+                continue
+            logger.info(f'Task {task_name} result: {result}')
             # 执行核心任务
             if len(keys) == len(result):
                 t = threading.Thread(target=self.modify_network, args=(CURRENT_OS,), kwargs=result)
