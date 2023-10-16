@@ -73,11 +73,15 @@ class Tool(object):
                 for k, v in keys.items():
                     if p := db.pop(v):
                         result[k] = p
-                db.close()
             except Exception as err:
                 logger.warning(f'DB file get params error: {err}')
                 time.sleep(INTERVAL)
                 continue
+            finally:
+                try:
+                    db.close()
+                except Exception:
+                    pass
             logger.info(f'Task {task_name} result: {result}')
             # 执行核心任务
             if len(keys) == len(result):
