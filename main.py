@@ -11,6 +11,7 @@ import subprocess
 import shelve
 import time
 import threading
+import ipaddress
 
 from datetime import datetime
 
@@ -173,10 +174,14 @@ class Tool(object):
 
         failed = False
         # kwargs 目前传入的参数有ip, subnet_mask, gateway
+        # 自己构建一个subnet_mask_prefix
+        if subnet_mask := kwargs.get('subnet_mask'):
+            ip = ipaddress.IPv4Network("0.0.0.0/" + subnet_mask, strict=False)
+            kwargs['subnet_mask_prefix'] = int(ip.prefixlen)
         os_actions = {
             UOS: [
                 'nmcli con mod eno1  ipv4.addresses {ip}',
-                'nmcli con mod eno1  ipv4.addresses {ip}/{subnet_mask}',
+                'nmcli con mod eno1  ipv4.addresses {ip}/{subnet_mask_prefix}',
                 'nmcli con mod eno1  ipv4.gateway {gateway}',
                 'nmcli con up eno1'
             ],
