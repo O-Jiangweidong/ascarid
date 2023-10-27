@@ -1,8 +1,8 @@
 """
 脚本提供的功能(方便运行，所有逻辑均在一个脚本中)
 1、提供健康检测接口，Linux上crontab定时任务探活使用
-2、提供JumpServer容器健康检测服务，超过检测失败次数后，执行命令jmsctl restart重启JumpServer
-3、从JumpServer中获取ip、gateway、subnet mask进行本机设置，并重启docker
+2、提供堡垒机容器健康检测服务，超过检测失败次数后，执行命令jmsctl restart重启堡垒机
+3、从堡垒机中获取ip、gateway、subnet mask进行本机设置，并重启docker
 """
 
 import os
@@ -55,8 +55,8 @@ class Tool(object):
         self._thread_pool[task_name]['timestamp'] = int(time.time())
         logger.info('Start check')
         keys = {
-            'ip': 'JUMPSERVER_IP', 'gateway': 'JUMPSERVER_GATEWAY',
-            'subnet_mask': 'JUMPSERVER_SUBNET_MASK'
+            'ip': 'SERVICE_IP', 'gateway': 'SERVICE_GATEWAY',
+            'subnet_mask': 'SERVICE_SUBNET_MASK'
         }
         volume_dir = os.environ.get("VOLUME_DIR")
         db_path = os.path.join(volume_dir, 'core', 'data', 'net_config')
@@ -90,7 +90,7 @@ class Tool(object):
             time.sleep(INTERVAL)
 
     def _init_task(self):
-        task_name = '周期检查JumpServer设置的网络配置'
+        task_name = '周期检查堡垒机设置的网络配置'
         thread = threading.Thread(
             target=self._period_check_net_config, args=(task_name,),
             name=task_name
