@@ -4,6 +4,8 @@
 export VOLUME_DIR=/data/jumpserver
 # 这里配置一下这个机器的操作系统, 只能是 UOS 和 CentOS
 export TASK_OS=CentOS
+# UOS 改的网卡，多个网卡之间用逗号分隔，如：eno1,eno2
+export UOS_NET=eno1
 # 这里配置一下这个任务执行的超时时间，默认30秒，
 # 健康检查接口检测机制: 如果当前和上次任务执行时间差值超过此值3倍，服务将标记为不健康
 export TASK_INTERVAL=10

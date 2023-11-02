@@ -37,7 +37,7 @@ UOS = 'UOS'
 CENTOS = 'CentOS'
 CURRENT_OS = os.environ.get('TASK_OS', CENTOS)
 INTERVAL = int(os.environ.get('TASK_INTERVAL', 10))
-
+UOS_NET = os.environ.get('UOS_NET', 'eno1').replace(' ', '')
 
 # ---------- 常量区域 ----------
 
@@ -184,10 +184,10 @@ class Tool(object):
             kwargs['subnet_mask_prefix'] = int(ip.prefixlen)
         os_actions = {
             UOS: [
-                'nmcli con mod eno1  ipv4.addresses {ip}',
-                'nmcli con mod eno1  ipv4.addresses {ip}/{subnet_mask_prefix}',
-                'nmcli con mod eno1  ipv4.gateway {gateway}',
-                'nmcli con up eno1'
+                'nmcli con mod {net_card}  ipv4.addresses {ip}',
+                'nmcli con mod {net_card}  ipv4.addresses {ip}/{subnet_mask_prefix}',
+                'nmcli con mod {net_card}  ipv4.gateway {gateway}',
+                'nmcli con up {net_card}'
             ],
             CENTOS: self.__modify_network_centos
         }
@@ -197,18 +197,19 @@ class Tool(object):
             return
 
         if isinstance(action, list):
-            for command in action:
-                try:
-                    full_command = command.format(**kwargs)
-                except KeyError:
-                    continue
+            for net_card in UOS_NET.split(','):
+                for command in action:
+                    try:
+                        full_command = command.format(net_card=net_card, **kwargs)
+                    except KeyError:
+                        continue
 
-                try:
-                    subprocess.run(full_command, shell=True, check=True)
-                    logger.info(f'Command [{full_command}] executed successfully')
-                except Exception as err:
-                    failed = True
-                    logger.error(f'Command [{full_command}], executed failed: {err}')
+                    try:
+                        subprocess.run(full_command, shell=True, check=True)
+                        logger.info(f'Command [{full_command}] executed successfully')
+                    except Exception as err:
+                        failed = True
+                        logger.error(f'Command [{full_command}], executed failed: {err}')
         elif callable(action):
             failed = not action(**kwargs)
         if not failed:
